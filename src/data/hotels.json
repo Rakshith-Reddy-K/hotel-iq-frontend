@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "name": "The Liberty, a Luxury Collection Hotel",
+    "location": "Beacon Hill, Boston",
+    "rating": 4.8,
+    "reviews": 1240,
+    "price": 450,
+    "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    "description": "Housed in the historic Charles Street Jail, The Liberty combines historic architecture with modern luxury. Steps away from the Charles River Esplanade and boutique shopping.",
+    "amenities": ["Free Wifi", "River View", " luxury bedding", "24/7 Gym", "Valet Parking"]
+  },
+  {
+    "id": 2,
+    "name": "Boston Harbor Hotel",
+    "location": "Rowes Wharf, Boston",
+    "rating": 4.9,
+    "reviews": 2100,
+    "price": 595,
+    "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    "description": "Boston's premier waterfront hotel. Enjoy stunning harbor views, a full-service spa, and world-class dining right on the water.",
+    "amenities": ["Waterfront", "Spa", "Pool", "Fine Dining", "Concierge"]
+  },
+  {
+    "id": 3,
+    "name": "The Omni Parker House",
+    "location": "School St, Downtown Boston",
+    "rating": 4.5,
+    "reviews": 3500,
+    "price": 280,
+    "image": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    "description": "America's longest continuously operating hotel. Famous for its Boston Cream Pie and old-world charm, located right on the Freedom Trail.",
+    "amenities": ["Historic", "Restaurant", "Bar", "Central Location", "Pet Friendly"]
+  },
+  {
+    "id": 4,
+    "name": "Fairmont Copley Plaza",
+    "location": "Copley Square, Back Bay",
+    "rating": 4.7,
+    "reviews": 1800,
+    "price": 390,
+    "image": "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    "description": "A symbol of Boston's rich history and elegance. Located in Back Bay, just steps from the Boston Public Library and Newbury Street shopping.",
+    "amenities": ["Luxury", "Event Space", "Fitness Center", "Room Service", "Bar"]
+  },
+  {
+    "id": 5,
+    "name": "The Envoy Hotel, Autograph Collection",
+    "location": "Seaport District, Boston",
+    "rating": 4.6,
+    "reviews": 950,
+    "price": 320,
+    "image": "https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+    "description": "A visionary hotel in the Innovation District. Features a popular rooftop bar with skyline views and modern, art-forward interiors.",
+    "amenities": ["Rooftop Bar", "Modern Art", "Fitness", "Seaport Views", "Wifi"]
+  }
+]
