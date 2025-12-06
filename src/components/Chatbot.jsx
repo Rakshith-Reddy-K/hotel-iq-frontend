@@ -330,12 +330,12 @@ export default function Chatbot() {
             position: "fixed",
             right: 24,
             bottom: 24,
-            bgcolor: "primary.main",
+            bgcolor: "#2563eb",  // Changed to light blue
             color: "white",
             width: 64,
             height: 64,
             boxShadow: 4,
-            "&:hover": { bgcolor: "primary.dark" },
+            "&:hover": { bgcolor: "#1d4ed8" },  // Darker blue on hover
             zIndex: 1000,
           }}
         >
@@ -363,7 +363,7 @@ export default function Chatbot() {
             sx={{
               display: "flex",
               alignItems: "center",
-              bgcolor: "primary.main",
+              bgcolor: "#2563eb",  // Changed to light blue
               color: "white",
               px: 3,
               py: 2,
@@ -372,7 +372,7 @@ export default function Chatbot() {
             <Avatar
               sx={{
                 bgcolor: "white",
-                color: "primary.main",
+                color: "#2563eb",  // Changed to light blue
                 width: 40,
                 height: 40,
                 mr: 1.5,
@@ -435,7 +435,7 @@ export default function Chatbot() {
                   sx={{
                     p: 2,
                     maxWidth: "75%",
-                    bgcolor: m.from === "bot" ? "white" : "primary.main",
+                    bgcolor: m.from === "bot" ? "white" : "#2563eb",  // Changed to light blue
                     color: m.from === "bot" ? "text.primary" : "white",
                     boxShadow: 1,
                   }}
@@ -466,7 +466,7 @@ export default function Chatbot() {
                 sx={{ display: "flex", justifyContent: "flex-start", mb: 2 }}
               >
                 <Paper sx={{ p: 2, bgcolor: "white", boxShadow: 1 }}>
-                  <CircularProgress size={20} />
+                  <CircularProgress size={20} sx={{ color: "#2563eb" }} />
                 </Paper>
               </Box>
             )}
@@ -495,7 +495,10 @@ export default function Chatbot() {
                   <InputAdornment position="end">
                     <IconButton
                       onClick={send}
-                      color="primary"
+                      sx={{ 
+                        color: "#2563eb",  // Changed to light blue
+                        "&:hover": { bgcolor: "rgba(37, 99, 235, 0.1)" }
+                      }}
                       disabled={loading || !text.trim()}
                     >
                       <SendIcon />

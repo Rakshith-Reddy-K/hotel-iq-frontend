@@ -58,7 +58,7 @@ export default function HotelCard({ hotel, onClick }) {
               fontSize: '0.875rem',
               height: 32,
               '& .MuiChip-icon': {
-                color: '#FFA726'
+                color: '#FFA726'  // Keep yellow/orange
               }
             }}
           />
@@ -142,7 +142,7 @@ export default function HotelCard({ hotel, onClick }) {
             <Box sx={{ textAlign: 'right' }}>
               <Typography 
                 variant="h6" 
-                color="primary" 
+                color="secondary"  // Changed from primary to secondary (light blue)
                 fontWeight={700}
                 component="span"
                 sx={{ fontSize: '1.25rem' }}
