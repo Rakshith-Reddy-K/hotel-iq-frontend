@@ -17,7 +17,7 @@ export default function App() {
         <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/hotel/:id" element={<HotelDetails />} />
+            <Route path="/hotel/:hotelId" element={<HotelDetails />} />
           </Routes>
         </Container>
         <Footer />
