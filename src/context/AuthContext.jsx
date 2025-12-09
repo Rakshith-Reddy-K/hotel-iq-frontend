@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const API_BASE =
-  process.env.REACT_APP_API_URL || "http://localhost:8000/api/v1";
+  process.env.REACT_APP_BACKEND_BASE_URL || "http://localhost:8000/api/v1";
 
 const AuthContext = createContext(null);
 
