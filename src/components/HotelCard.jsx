@@ -58,7 +58,7 @@ export default function HotelCard({ hotel, onClick }) {
               fontSize: '0.875rem',
               height: 32,
               '& .MuiChip-icon': {
-                color: '#FFA726'  // Keep yellow/orange
+                color: '#FFA726'
               }
             }}
           />
@@ -140,23 +140,35 @@ export default function HotelCard({ hotel, onClick }) {
               {hotel.reviews.toLocaleString()} reviews
             </Typography>
             <Box sx={{ textAlign: 'right' }}>
-              <Typography 
-                variant="h6" 
-                color="secondary"  // Changed from primary to secondary (light blue)
-                fontWeight={700}
-                component="span"
-                sx={{ fontSize: '1.25rem' }}
-              >
-                ${hotel.price}
-              </Typography>
-              <Typography 
-                component="span" 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ fontSize: '0.875rem', ml: 0.5 }}
-              >
-                / night
-              </Typography>
+              {hotel.price > 0 ? (
+                <>
+                  <Typography 
+                    variant="h6" 
+                    color="secondary"
+                    fontWeight={700}
+                    component="span"
+                    sx={{ fontSize: '1.25rem' }}
+                  >
+                    ${hotel.price}
+                  </Typography>
+                  <Typography 
+                    component="span" 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{ fontSize: '0.875rem', ml: 0.5 }}
+                  >
+                    / night
+                  </Typography>
+                </>
+              ) : (
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: '0.875rem', fontStyle: 'italic' }}
+                >
+                  Price at checkout
+                </Typography>
+              )}
             </Box>
           </Box>
         </CardContent>

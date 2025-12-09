@@ -1,11 +1,48 @@
-import React from "react";
-import { Typography, Box } from "@mui/material";
-import hotels from "../data/hotels.json";
+import React, { useState, useEffect } from "react";
+import { Typography, Box, CircularProgress, Alert } from "@mui/material";
 import HotelCard from "../components/HotelCard";
 import { useNavigate } from "react-router-dom";
+import { hotelAPI } from "../services/api";
 
 export default function Home() {
   const navigate = useNavigate();
+  const [hotels, setHotels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchHotels();
+  }, []);
+
+  const fetchHotels = async () => {
+    try {
+      setLoading(true);
+      const response = await hotelAPI.getAllHotels();
+      setHotels(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching hotels:", err);
+      setError("Failed to load hotels. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mt: 2 }}>
+        {error}
+      </Alert>
+    );
+  }
 
   return (
     <>

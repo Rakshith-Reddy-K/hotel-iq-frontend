@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import hotels from "../data/hotels.json";
+import { hotelAPI } from "../services/api";
 import {
   Box,
   Container,
@@ -8,43 +8,178 @@ import {
   Typography,
   Grid,
   Button,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import WifiIcon from "@mui/icons-material/Wifi";
-import LocalParkingIcon from "@mui/icons-material/LocalParking";
-import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import StarIcon from "@mui/icons-material/Star";
+import WifiIcon from "@mui/icons-material/Wifi";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
+import LocalParkingIcon from "@mui/icons-material/LocalParking";
+import PoolIcon from "@mui/icons-material/Pool";
 import SpaIcon from "@mui/icons-material/Spa";
-import BedroomParentIcon from "@mui/icons-material/BedroomParent";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import AcUnitIcon from "@mui/icons-material/AcUnit";
+import KitchenIcon from "@mui/icons-material/Kitchen";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
+import LocalLaundryServiceIcon from "@mui/icons-material/LocalLaundryService";
+import RoomServiceIcon from "@mui/icons-material/RoomService";
+import LocalBarIcon from "@mui/icons-material/LocalBar";
+import FreeBreakfastIcon from "@mui/icons-material/FreeBreakfast";
+import PetsIcon from "@mui/icons-material/Pets";
+import SmokeFreeIcon from "@mui/icons-material/SmokeFree";
+import AccessibleIcon from "@mui/icons-material/Accessible";
+import BeachAccessIcon from "@mui/icons-material/BeachAccess";
+import LocalCafeIcon from "@mui/icons-material/LocalCafe";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const getAmenityIcon = (amenity) => {
   const lower = amenity.toLowerCase();
-  if (lower.includes("wifi")) return <WifiIcon color="primary" />;
-  if (lower.includes("parking")) return <DirectionsCarIcon color="primary" />;
-  if (
-    lower.includes("gym") ||
-    lower.includes("fitness") ||
-    lower.includes("24/7")
-  )
-    return <FitnessCenterIcon color="primary" />;
-  if (lower.includes("spa")) return <SpaIcon color="primary" />;
-  if (lower.includes("dining") || lower.includes("restaurant"))
-    return <RestaurantIcon color="primary" />;
-  if (lower.includes("bedding") || lower.includes("luxury bedding"))
-    return <BedroomParentIcon color="primary" />;
-  if (lower.includes("view")) return <RestaurantIcon color="primary" />;
-  return <WifiIcon color="primary" />;
+  
+  // Internet/Wifi
+  if (lower.includes("wifi") || lower.includes("internet") || lower.includes("wireless")) {
+    return <WifiIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Parking
+  if (lower.includes("parking") || lower.includes("valet")) {
+    return <LocalParkingIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Fitness/Gym
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("workout") || lower.includes("exercise")) {
+    return <FitnessCenterIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Restaurant/Dining
+  if (lower.includes("restaurant") || lower.includes("dining")) {
+    return <RestaurantIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Room Service
+  if (lower.includes("room service")) {
+    return <RoomServiceIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Pool
+  if (lower.includes("pool") || lower.includes("swimming")) {
+    return <PoolIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Spa
+  if (lower.includes("spa") || lower.includes("massage") || lower.includes("sauna")) {
+    return <SpaIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Air Conditioning
+  if (lower.includes("air conditioning") || lower.includes("ac") || lower.includes("climate control")) {
+    return <AcUnitIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Kitchen/Refrigerator
+  if (lower.includes("refrigerator") || lower.includes("fridge") || lower.includes("kitchen") || lower.includes("kitchenette") || lower.includes("microwave")) {
+    return <KitchenIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Business Center
+  if (lower.includes("business") || lower.includes("meeting") || lower.includes("conference")) {
+    return <BusinessCenterIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Laundry
+  if (lower.includes("laundry") || lower.includes("washer") || lower.includes("dryer")) {
+    return <LocalLaundryServiceIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Bar/Lounge
+  if (lower.includes("bar") || lower.includes("lounge") || lower.includes("cocktail")) {
+    return <LocalBarIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Breakfast
+  if (lower.includes("breakfast") || lower.includes("coffee") || lower.includes("tea")) {
+    return <FreeBreakfastIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Concierge/Front Desk
+  if (lower.includes("concierge") || lower.includes("front desk") || lower.includes("24/7") || lower.includes("reception")) {
+    return <MeetingRoomIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Pet Friendly
+  if (lower.includes("pet") || lower.includes("dog") || lower.includes("cat")) {
+    return <PetsIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Non-Smoking
+  if (lower.includes("smoke free") || lower.includes("non-smoking") || lower.includes("no smoking")) {
+    return <SmokeFreeIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Accessible
+  if (lower.includes("accessible") || lower.includes("wheelchair") || lower.includes("disability")) {
+    return <AccessibleIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Beach/Waterfront
+  if (lower.includes("beach") || lower.includes("waterfront") || lower.includes("ocean")) {
+    return <BeachAccessIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Cafe
+  if (lower.includes("cafe") || lower.includes("starbucks")) {
+    return <LocalCafeIcon sx={{ fontSize: 20, color: 'text.secondary' }} />;
+  }
+  
+  // Default - generic checkmark for any other amenity
+  return <CheckCircleIcon sx={{ fontSize: 20, color: 'primary.main' }} />;
 };
 
 export default function HotelDetails() {
   const { hotelId } = useParams();
   const navigate = useNavigate();
-  const hotel = hotels.find((h) => h.id === Number(hotelId));
+  const [hotel, setHotel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!hotel) return <Typography>Hotel not found</Typography>;
+  useEffect(() => {
+    fetchHotel();
+  }, [hotelId]);
+
+  const fetchHotel = async () => {
+    try {
+      setLoading(true);
+      const response = await hotelAPI.getHotelById(hotelId);
+      setHotel(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching hotel:", err);
+      setError("Hotel not found");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error || !hotel) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="error">{error || "Hotel not found"}</Alert>
+        <Button onClick={() => navigate("/")} sx={{ mt: 2 }}>
+          Back to Home
+        </Button>
+      </Container>
+    );
+  }
 
   return (
     <Box>
@@ -69,7 +204,6 @@ export default function HotelDetails() {
           }}
         />
 
-        {/* Dark Overlay */}
         <Box
           sx={{
             position: "absolute",
@@ -82,7 +216,6 @@ export default function HotelDetails() {
           }}
         />
 
-        {/* Back Button */}
         <IconButton
           onClick={() => navigate(-1)}
           sx={{
@@ -99,7 +232,6 @@ export default function HotelDetails() {
           <ArrowBackIcon />
         </IconButton>
 
-        {/* Hotel Info Overlay */}
         <Container maxWidth="lg">
           <Box
             sx={{
@@ -113,7 +245,6 @@ export default function HotelDetails() {
               color: "white",
             }}
           >
-            {/* Title and Price Row */}
             <Box
               display="flex"
               justifyContent="space-between"
@@ -132,27 +263,41 @@ export default function HotelDetails() {
               </Typography>
 
               <Box sx={{ textAlign: "right", ml: 3 }}>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontWeight: 700,
-                    textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  ${hotel.price}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  per night
-                </Typography>
+                {hotel.price > 0 ? (
+                  <>
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 700,
+                        textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      ${hotel.price}
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                      }}
+                    >
+                      per night
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 500,
+                      textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Price at checkout
+                  </Typography>
+                )}
               </Box>
             </Box>
 
-            {/* Location and Rating Row */}
             <Box
               display="flex"
               justifyContent="space-between"
@@ -196,9 +341,7 @@ export default function HotelDetails() {
         </Container>
       </Box>
 
-      {/* Content - Single Column Layout */}
       <Container maxWidth="md">
-        {/* About Section */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h5" fontWeight={700} mb={2}>
             About This Hotel
@@ -214,7 +357,6 @@ export default function HotelDetails() {
 
         <Box sx={{ borderTop: "1px solid #e0e0e0", pt: 4, mb: 4 }} />
 
-        {/* Amenities Section - 2 Column Grid */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h5" fontWeight={700} mb={3}>
             Amenities
@@ -240,7 +382,6 @@ export default function HotelDetails() {
 
         <Box sx={{ borderTop: "1px solid #e0e0e0", pt: 4, mb: 4 }} />
 
-        {/* Check-in Information */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h5" fontWeight={700} mb={3}>
             Check-in Information
@@ -274,7 +415,6 @@ export default function HotelDetails() {
             </Grid>
           </Grid>
 
-          {/* Book Now Button - Full Width */}
           <Button
             variant="contained"
             fullWidth
