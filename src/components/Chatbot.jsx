@@ -9,15 +9,18 @@ import {
   InputAdornment,
   Avatar,
   CircularProgress,
+  Button,
 } from "@mui/material";
 import ChatBubbleIcon from "@mui/icons-material/ChatBubble";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import LockIcon from "@mui/icons-material/Lock";
 import axios from "axios";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const STORAGE_KEY_PREFIX = "hoteliq_chat_session"; // Will append hotelId
+const STORAGE_KEY_PREFIX = "hoteliq_chat_session";
 const DEFAULT_HOTEL_ID = "111418";
 const API_BASE_URL =
   process.env.REACT_APP_BACKEND_BASE_URL || "http://localhost:8000";
@@ -27,13 +30,17 @@ export default function Chatbot() {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
-  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const messagesEndRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentHotelId, setCurrentHotelId] = useState(DEFAULT_HOTEL_ID);
   const prevHotelIdRef = useRef(currentHotelId);
+
+  // Get authenticated user
+  const { user, isAuthenticated } = useAuth();
+  const userId = user?.id || null;
 
   // Detect hotel ID from URL
   useEffect(() => {
@@ -42,26 +49,26 @@ export default function Chatbot() {
     setCurrentHotelId(newHotelId);
   }, [location.pathname]);
 
-  // When hotel changes, load that hotel's conversation
+  // When hotel changes or user logs in, load that hotel's conversation
   useEffect(() => {
-    if (prevHotelIdRef.current !== currentHotelId) {
-      console.log(
-        `Hotel changed from ${prevHotelIdRef.current} to ${currentHotelId}`
-      );
-      prevHotelIdRef.current = currentHotelId;
-
-      // Load the conversation for the new hotel
+    if (isAuthenticated && userId) {
+      if (prevHotelIdRef.current !== currentHotelId) {
+        console.log(
+          `Hotel changed from ${prevHotelIdRef.current} to ${currentHotelId}`
+        );
+        prevHotelIdRef.current = currentHotelId;
+      }
       loadSession();
     }
-  }, [currentHotelId]);
+  }, [currentHotelId, isAuthenticated, userId]);
 
   const generateId = () => {
     return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  // Get storage key specific to this hotel
+  // Get storage key specific to this hotel AND user
   const getStorageKey = (hotelId) => {
-    return `${STORAGE_KEY_PREFIX}_${hotelId}`;
+    return `${STORAGE_KEY_PREFIX}_${userId}_${hotelId}`;
   };
 
   // Auto-scroll to bottom when messages change
@@ -69,23 +76,26 @@ export default function Chatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Initial load
+  // Auto-sync to GCS every 30 seconds
   useEffect(() => {
-    loadSession();
-  }, []);
-
-  // Auto-sync to GCS every 30 seconds (debounced)
-  useEffect(() => {
-    if (threadId && userId && messages.length > 0 && currentHotelId) {
+    if (
+      threadId &&
+      userId &&
+      messages.length > 0 &&
+      currentHotelId &&
+      isAuthenticated
+    ) {
       const timer = setTimeout(() => {
         syncToCloud();
-      }, 30000); // 30 seconds
+      }, 30000);
 
       return () => clearTimeout(timer);
     }
-  }, [messages, threadId, userId, currentHotelId]);
+  }, [messages, threadId, userId, currentHotelId, isAuthenticated]);
 
   const loadSession = async () => {
+    if (!isAuthenticated || !userId) return;
+
     try {
       const storageKey = getStorageKey(currentHotelId);
       const saved = localStorage.getItem(storageKey);
@@ -93,25 +103,27 @@ export default function Chatbot() {
       if (saved) {
         const localData = JSON.parse(saved);
 
-        // Verify the hotelId matches (safety check)
-        if (localData.hotelId === currentHotelId) {
-          console.log(`Loading session for hotel ${currentHotelId}`);
+        if (
+          localData.hotelId === currentHotelId &&
+          localData.userId === userId
+        ) {
+          console.log(
+            `Loading session for user ${userId}, hotel ${currentHotelId}`
+          );
           setThreadId(localData.threadId);
-          setUserId(localData.userId);
           setMessages(localData.messages || [getWelcomeMessage()]);
 
-          // Try to load from cloud in background
-          await loadFromCloud(localData.threadId, localData.userId);
+          await loadFromCloud(localData.threadId);
         } else {
-          // HotelId mismatch, initialize new session
-          initializeNewSession();
+          // Local data doesn't match - check cloud first
+          await findOrCreateSession();
         }
       } else {
-        // No saved session for this hotel
         console.log(
-          `No saved session for hotel ${currentHotelId}, initializing new`
+          `No local session for user ${userId}, hotel ${currentHotelId}. Checking cloud...`
         );
-        initializeNewSession();
+        // No local data - check cloud for existing conversation
+        await findOrCreateSession();
       }
     } catch (error) {
       console.error("Error loading session:", error);
@@ -119,7 +131,47 @@ export default function Chatbot() {
     }
   };
 
-  const loadFromCloud = async (threadId, userId) => {
+  const findOrCreateSession = async () => {
+    try {
+      setSyncing(true);
+      // Check cloud for existing conversations for this user + hotel
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/chat/conversations/list`,
+        {
+          params: { userId, hotelId: currentHotelId, limit: 1 },
+        }
+      );
+
+      if (
+        response.data &&
+        response.data.conversations &&
+        response.data.conversations.length > 0
+      ) {
+        // Found existing conversation - load it
+        const existingThreadId = response.data.conversations[0].threadId;
+        console.log(
+          `Found existing conversation in cloud: ${existingThreadId}`
+        );
+        setThreadId(existingThreadId);
+        await loadFromCloud(existingThreadId);
+      } else {
+        // No existing conversation - create new one
+        console.log(
+          `No existing conversation found in cloud. Creating new session.`
+        );
+        initializeNewSession();
+      }
+    } catch (error) {
+      console.error("Error finding session from cloud:", error);
+      initializeNewSession();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const loadFromCloud = async (threadId) => {
+    if (!isAuthenticated || !userId) return;
+
     try {
       setSyncing(true);
       const response = await axios.get(
@@ -131,10 +183,10 @@ export default function Chatbot() {
 
       if (response.data && response.data.messages) {
         console.log(
-          `Loaded conversation from cloud for hotel ${currentHotelId}`
+          `Loaded conversation from cloud for user ${userId}, hotel ${currentHotelId}`
         );
         setMessages(response.data.messages);
-        saveToLocalStorage(threadId, userId, response.data.messages);
+        saveToLocalStorage(threadId, response.data.messages);
       }
     } catch (error) {
       if (error.response?.status !== 404) {
@@ -145,8 +197,9 @@ export default function Chatbot() {
     }
   };
 
-  const syncToCloud = async () => {
-    if (!threadId || !userId || messages.length === 0) return;
+  const syncToCloud = async (messagesToSync = null) => {
+    const msgs = messagesToSync || messages;
+    if (!threadId || !userId || msgs.length === 0 || !isAuthenticated) return;
 
     try {
       setSyncing(true);
@@ -154,9 +207,11 @@ export default function Chatbot() {
         threadId,
         userId,
         hotelId: currentHotelId,
-        messages,
+        messages: msgs,
       });
-      console.log(`Synced to cloud for hotel ${currentHotelId}`);
+      console.log(
+        `Synced to cloud for user ${userId}, hotel ${currentHotelId}`
+      );
     } catch (error) {
       console.error("Error syncing to cloud:", error);
     } finally {
@@ -164,10 +219,14 @@ export default function Chatbot() {
     }
   };
 
-  const saveToLocalStorage = (threadId, userId, messages) => {
+  const saveToLocalStorage = (threadId, messages) => {
+    if (!userId) return;
+
     try {
       const storageKey = getStorageKey(currentHotelId);
-      console.log(`Saving to localStorage for hotel ${currentHotelId}`);
+      console.log(
+        `Saving to localStorage for user ${userId}, hotel ${currentHotelId}`
+      );
 
       const sessionData = {
         threadId,
@@ -184,51 +243,42 @@ export default function Chatbot() {
   };
 
   const initializeNewSession = () => {
-    const newThreadId = `thread_${currentHotelId}_${generateId()}`;
-    const newUserId = getUserId(); // Get or create persistent user ID
+    if (!userId) return;
 
-    console.log(`New session initialized for hotel ${currentHotelId}:`, {
-      newThreadId,
-      newUserId,
-    });
+    const newThreadId = `thread_${userId}_${currentHotelId}_${generateId()}`;
+
+    console.log(
+      `New session initialized for user ${userId}, hotel ${currentHotelId}:`,
+      {
+        newThreadId,
+      }
+    );
 
     setThreadId(newThreadId);
-    setUserId(newUserId);
 
     const welcomeMsg = getWelcomeMessage();
     setMessages([welcomeMsg]);
 
-    saveToLocalStorage(newThreadId, newUserId, [welcomeMsg]);
-  };
-
-  // Get or create a persistent user ID (same across all hotels)
-  const getUserId = () => {
-    const USER_ID_KEY = "hoteliq_user_id";
-    let userId = localStorage.getItem(USER_ID_KEY);
-
-    if (!userId) {
-      userId = `user_${generateId()}`;
-      localStorage.setItem(USER_ID_KEY, userId);
-      console.log("Created new user ID:", userId);
-    }
-
-    return userId;
+    saveToLocalStorage(newThreadId, [welcomeMsg]);
   };
 
   const getWelcomeMessage = () => ({
     id: Date.now(),
     from: "bot",
-    text: `Hi there! Welcome to HotelIQ. I'm here to help you with information about this hotel. How can I assist you today?`,
+    text: `Hi ${
+      user?.first_name || "there"
+    }! Welcome to HotelIQ. I'm here to help you with information about this hotel. How can I assist you today?`,
     timestamp: new Date().toISOString(),
   });
 
   const resetChat = async () => {
+    if (!isAuthenticated || !userId) return;
+
     if (
       window.confirm(
         `Are you sure you want to start a new conversation for this hotel?`
       )
     ) {
-      // Delete from cloud
       try {
         await axios.delete(
           `${API_BASE_URL}/api/v1/chat/conversation/${threadId}`,
@@ -237,13 +287,12 @@ export default function Chatbot() {
           }
         );
         console.log(
-          `Conversation deleted from cloud for hotel ${currentHotelId}`
+          `Conversation deleted from cloud for user ${userId}, hotel ${currentHotelId}`
         );
       } catch (error) {
         console.error("Error deleting from cloud:", error);
       }
 
-      // Clear local storage for this hotel
       const storageKey = getStorageKey(currentHotelId);
       localStorage.removeItem(storageKey);
 
@@ -252,7 +301,7 @@ export default function Chatbot() {
   };
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !isAuthenticated || !userId) return;
 
     const userMessage = {
       id: Date.now(),
@@ -268,8 +317,7 @@ export default function Chatbot() {
     setText("");
     setLoading(true);
 
-    // Save to localStorage immediately
-    saveToLocalStorage(threadId, userId, updatedMessages);
+    saveToLocalStorage(threadId, updatedMessages);
 
     try {
       const response = await axios.post(
@@ -298,11 +346,8 @@ export default function Chatbot() {
       const finalMessages = [...updatedMessages, botMessage];
       setMessages(finalMessages);
 
-      // Save to localStorage
-      saveToLocalStorage(threadId, userId, finalMessages);
-
-      // Sync to cloud (non-blocking)
-      syncToCloud();
+      saveToLocalStorage(threadId, finalMessages);
+      await syncToCloud(finalMessages);
     } catch (error) {
       console.error("Error sending message:", error);
 
@@ -315,10 +360,15 @@ export default function Chatbot() {
 
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      saveToLocalStorage(threadId, userId, finalMessages);
+      saveToLocalStorage(threadId, finalMessages);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginClick = () => {
+    setOpen(false);
+    navigate("/login");
   };
 
   return (
@@ -330,12 +380,12 @@ export default function Chatbot() {
             position: "fixed",
             right: 24,
             bottom: 24,
-            bgcolor: "#2563eb",  // Changed to light blue
+            bgcolor: "#2563eb",
             color: "white",
             width: 64,
             height: 64,
             boxShadow: 4,
-            "&:hover": { bgcolor: "#1d4ed8" },  // Darker blue on hover
+            "&:hover": { bgcolor: "#1d4ed8" },
             zIndex: 1000,
           }}
         >
@@ -363,7 +413,7 @@ export default function Chatbot() {
             sx={{
               display: "flex",
               alignItems: "center",
-              bgcolor: "#2563eb",  // Changed to light blue
+              bgcolor: "#2563eb",
               color: "white",
               px: 3,
               py: 2,
@@ -372,7 +422,7 @@ export default function Chatbot() {
             <Avatar
               sx={{
                 bgcolor: "white",
-                color: "#2563eb",  // Changed to light blue
+                color: "#2563eb",
                 width: 40,
                 height: 40,
                 mr: 1.5,
@@ -393,121 +443,183 @@ export default function Chatbot() {
                   Syncing...
                 </Typography>
               )}
-              <Typography
-                variant="caption"
-                sx={{ display: "block", fontSize: 9, opacity: 0.7 }}
-              >
-                Hotel: {currentHotelId}
-              </Typography>
+              {isAuthenticated && (
+                <Typography
+                  variant="caption"
+                  sx={{ display: "block", fontSize: 9, opacity: 0.7 }}
+                >
+                  Hotel: {currentHotelId}
+                </Typography>
+              )}
             </Box>
-            <IconButton
-              onClick={resetChat}
-              sx={{ color: "white", mr: 1 }}
-              title="Start new conversation"
-            >
-              <RefreshIcon />
-            </IconButton>
+            {isAuthenticated && (
+              <IconButton
+                onClick={resetChat}
+                sx={{ color: "white", mr: 1 }}
+                title="Start new conversation"
+              >
+                <RefreshIcon />
+              </IconButton>
+            )}
             <IconButton onClick={() => setOpen(false)} sx={{ color: "white" }}>
               <CloseIcon />
             </IconButton>
           </Box>
 
-          <Box
-            sx={{
-              p: 3,
-              flexGrow: 1,
-              overflowY: "auto",
-              bgcolor: "#fafafa",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {messages.map((m) => (
-              <Box
-                key={m.id}
+          {/* Show login prompt if not authenticated */}
+          {!isAuthenticated ? (
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 4,
+                bgcolor: "#fafafa",
+                textAlign: "center",
+              }}
+            >
+              <Avatar
                 sx={{
-                  mb: 2,
-                  display: "flex",
-                  justifyContent: m.from === "bot" ? "flex-start" : "flex-end",
+                  width: 80,
+                  height: 80,
+                  bgcolor: "#e0e0e0",
+                  mb: 3,
                 }}
               >
-                <Paper
-                  sx={{
-                    p: 2,
-                    maxWidth: "75%",
-                    bgcolor: m.from === "bot" ? "white" : "#2563eb",  // Changed to light blue
-                    color: m.from === "bot" ? "text.primary" : "white",
-                    boxShadow: 1,
-                  }}
-                >
-                  <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-                    {m.text}
-                  </Typography>
-                  <Typography
-                    variant="caption"
+                <LockIcon sx={{ fontSize: 40, color: "#9e9e9e" }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                Sign in to Chat
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Please sign in to access the HotelIQ Assistant and get
+                personalized help with your hotel queries.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleLoginClick}
+                sx={{
+                  bgcolor: "#2563eb",
+                  "&:hover": { bgcolor: "#1d4ed8" },
+                  px: 4,
+                  py: 1,
+                }}
+              >
+                Sign In
+              </Button>
+            </Box>
+          ) : (
+            <>
+              <Box
+                sx={{
+                  p: 3,
+                  flexGrow: 1,
+                  overflowY: "auto",
+                  bgcolor: "#fafafa",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {messages.map((m) => (
+                  <Box
+                    key={m.id}
                     sx={{
-                      display: "block",
-                      mt: 0.5,
-                      opacity: 0.7,
-                      fontSize: "0.7rem",
+                      mb: 2,
+                      display: "flex",
+                      justifyContent:
+                        m.from === "bot" ? "flex-start" : "flex-end",
                     }}
                   >
-                    {new Date(m.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Typography>
-                </Paper>
-              </Box>
-            ))}
-
-            {loading && (
-              <Box
-                sx={{ display: "flex", justifyContent: "flex-start", mb: 2 }}
-              >
-                <Paper sx={{ p: 2, bgcolor: "white", boxShadow: 1 }}>
-                  <CircularProgress size={20} sx={{ color: "#2563eb" }} />
-                </Paper>
-              </Box>
-            )}
-
-            <div ref={messagesEndRef} />
-          </Box>
-
-          <Box sx={{ p: 2, bgcolor: "white", borderTop: "1px solid #e0e0e0" }}>
-            <TextField
-              fullWidth
-              placeholder="Type a message..."
-              size="medium"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !loading) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              disabled={loading}
-              multiline
-              maxRows={3}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={send}
-                      sx={{ 
-                        color: "#2563eb",  // Changed to light blue
-                        "&:hover": { bgcolor: "rgba(37, 99, 235, 0.1)" }
+                    <Paper
+                      sx={{
+                        p: 2,
+                        maxWidth: "75%",
+                        bgcolor: m.from === "bot" ? "white" : "#2563eb",
+                        color: m.from === "bot" ? "text.primary" : "white",
+                        boxShadow: 1,
                       }}
-                      disabled={loading || !text.trim()}
                     >
-                      <SendIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
+                      <Typography
+                        variant="body1"
+                        sx={{ whiteSpace: "pre-wrap" }}
+                      >
+                        {m.text}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          mt: 0.5,
+                          opacity: 0.7,
+                          fontSize: "0.7rem",
+                        }}
+                      >
+                        {new Date(m.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                ))}
+
+                {loading && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-start",
+                      mb: 2,
+                    }}
+                  >
+                    <Paper sx={{ p: 2, bgcolor: "white", boxShadow: 1 }}>
+                      <CircularProgress size={20} sx={{ color: "#2563eb" }} />
+                    </Paper>
+                  </Box>
+                )}
+
+                <div ref={messagesEndRef} />
+              </Box>
+
+              <Box
+                sx={{ p: 2, bgcolor: "white", borderTop: "1px solid #e0e0e0" }}
+              >
+                <TextField
+                  fullWidth
+                  placeholder="Type a message..."
+                  size="medium"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !loading) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  disabled={loading}
+                  multiline
+                  maxRows={3}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={send}
+                          sx={{
+                            color: "#2563eb",
+                            "&:hover": { bgcolor: "rgba(37, 99, 235, 0.1)" },
+                          }}
+                          disabled={loading || !text.trim()}
+                        >
+                          <SendIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+            </>
+          )}
         </Paper>
       )}
     </>

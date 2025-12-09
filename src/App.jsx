@@ -9,39 +9,54 @@ import ConciergePage from "./pages/ConciergePage";
 import Chatbot from "./components/Chatbot";
 import Footer from "./components/Footer";
 
+import { AuthProvider } from "./context/AuthContext";
+import LoginPage from "./pages/LoginPage";
+
 export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Routes>
-          {/* Main Hotel Booking Routes - With Navbar, Footer, Chatbot */}
-          <Route path="/" element={
-            <>
-              <Navbar />
-              <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-                <Home />
-              </Container>
-              <Footer />
-              <Chatbot />
-            </>
-          } />
-          
-          <Route path="/hotel/:hotelId" element={
-            <>
-              <Navbar />
-              <Box sx={{ mb: 8 }}>  {/* Remove Container, use Box without padding */}
-                <HotelDetails />
-              </Box>
-              <Footer />
-              <Chatbot />
-            </>
-          } />
+      {/* Wrap everything in AuthProvider */}
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Login Route - ADD THIS */}
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* Guest Portal Route - Standalone, No Navbar/Footer/Chatbot */}
-          <Route path="/guest-portal" element={<ConciergePage />} />
-        </Routes>
-      </Router>
+            {/* Main Hotel Booking Routes - With Navbar, Footer, Chatbot */}
+            <Route
+              path="/"
+              element={
+                <>
+                  <Navbar />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+                    <Home />
+                  </Container>
+                  <Footer />
+                  <Chatbot />
+                </>
+              }
+            />
+
+            <Route
+              path="/hotel/:hotelId"
+              element={
+                <>
+                  <Navbar />
+                  <Box sx={{ mb: 8 }}>
+                    <HotelDetails />
+                  </Box>
+                  <Footer />
+                  <Chatbot />
+                </>
+              }
+            />
+
+            {/* Guest Portal Route - Standalone */}
+            <Route path="/guest-portal" element={<ConciergePage />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
