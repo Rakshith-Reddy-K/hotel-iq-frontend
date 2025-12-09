@@ -16,14 +16,11 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {/* Wrap everything in AuthProvider */}
       <AuthProvider>
         <Router>
           <Routes>
-            {/* Login Route - ADD THIS */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* Main Hotel Booking Routes - With Navbar, Footer, Chatbot */}
             <Route
               path="/"
               element={
@@ -52,7 +49,6 @@ export default function App() {
               }
             />
 
-            {/* Guest Portal Route - Standalone */}
             <Route path="/guest-portal" element={<ConciergePage />} />
           </Routes>
         </Router>
