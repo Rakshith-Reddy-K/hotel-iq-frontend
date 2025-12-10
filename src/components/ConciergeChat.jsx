@@ -9,6 +9,7 @@ import {
   Chip,
   Alert,
   AlertTitle,
+  Button,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -16,6 +17,14 @@ import {
   AccessTime as ClockIcon,
   Cancel as XCircleIcon,
   Place as MapPinIcon,
+  Wifi as WifiIcon,
+  DryCleaning as ShirtIcon,
+  Restaurant as UtensilsIcon,
+  DirectionsCar as CarIcon,
+  WaterDrop as DropletIcon,
+  Coffee as CoffeeIcon,
+  VpnKey as KeyIcon,
+  Phone as PhoneIcon,
 } from '@mui/icons-material';
 
 const ConciergeChat = ({ 
@@ -34,6 +43,52 @@ const ConciergeChat = ({
   const [inputMessage, setInputMessage] = useState('');
 
   const isChatEnabled = checkInStatus === 'checked-in';
+
+  // Quick action buttons configuration
+  const quickActions = [
+    { 
+      icon: WifiIcon, 
+      label: 'WiFi', 
+      message: 'What is the WiFi password?',
+      borderColor: '#3b82f6',
+      hoverBg: '#eff6ff'
+    },
+    { 
+      icon: () => <span style={{ fontSize: 18 }}>🔧</span>, 
+      label: 'Repair', 
+      message: 'Something is broken in my room',
+      borderColor: '#ef4444',
+      hoverBg: '#fef2f2'
+    },
+    { 
+      icon: DropletIcon, 
+      label: 'Towels', 
+      message: 'I need extra towels',
+      borderColor: '#14b8a6',
+      hoverBg: '#f0fdfa'
+    },
+    { 
+      icon: () => <span style={{ fontSize: 18 }}>🧹</span>, 
+      label: 'Clean', 
+      message: 'Please clean my room',
+      borderColor: '#a855f7',
+      hoverBg: '#faf5ff'
+    },
+    { 
+      icon: () => <span style={{ fontSize: 18 }}>🛎️</span>, 
+      label: 'Luggage', 
+      message: 'I need help with luggage',
+      borderColor: '#6366f1',
+      hoverBg: '#eef2ff'
+    },
+    { 
+      icon: ClockIcon, 
+      label: 'Checkout', 
+      message: 'When is checkout time?',
+      borderColor: '#6b7280',
+      hoverBg: '#f9fafb'
+    }
+  ];
 
   const getStatusConfig = () => {
     switch(checkInStatus) {
@@ -69,6 +124,28 @@ const ConciergeChat = ({
   };
 
   const statusConfig = getStatusConfig();
+
+  const handleQuickAction = (message) => {
+    if (!isChatEnabled) return;
+    
+    const newMessage = {
+      id: messages.length + 1,
+      sender: 'guest',
+      text: message,
+      timestamp: 'Now'
+    };
+    setMessages([...messages, newMessage]);
+    
+    setTimeout(() => {
+      const response = {
+        id: messages.length + 2,
+        sender: 'concierge',
+        text: 'I\'ve received your request. I\'ll take care of that right away!',
+        timestamp: 'Now'
+      };
+      setMessages(prev => [...prev, response]);
+    }, 1000);
+  };
 
   const handleSendMessage = () => {
     if (!isChatEnabled || !inputMessage.trim()) return;
@@ -291,57 +368,114 @@ const ConciergeChat = ({
           </Box>
         </Box>
 
-        {/* Input Area */}
+        {/* Input Area with Quick Actions */}
         <Paper
           elevation={3}
           sx={{
-            p: 3,
+            p: 2.5,
             borderRadius: 0,
             borderTop: '1px solid',
             borderColor: 'divider',
           }}
         >
-          <Box sx={{ maxWidth: 900, mx: 'auto', display: 'flex', gap: 2 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder={
-                isChatEnabled
-                  ? "Type your request (e.g., 'I need more pillows')..."
-                  : 'Chat is disabled. Please check in first.'
-              }
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={!isChatEnabled}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 3,
-                  bgcolor: isChatEnabled ? '#f9fafb' : '#e5e7eb',
-                },
-              }}
-            />
-            <IconButton
-              color="primary"
-              onClick={handleSendMessage}
-              disabled={!isChatEnabled}
-              sx={{
-                bgcolor: isChatEnabled ? '#2563eb' : '#9ca3af',
-                color: 'white',
-                width: 56,
-                height: 56,
-                borderRadius: 2,
-                '&:hover': {
-                  bgcolor: isChatEnabled ? '#1d4ed8' : '#9ca3af',
-                },
-                '&.Mui-disabled': {
-                  bgcolor: '#9ca3af',
-                  color: 'white',
-                },
+          <Box sx={{ maxWidth: 900, mx: 'auto' }}>
+            {/* Quick Action Buttons */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 1, 
+                mb: 2,
               }}
             >
-              <SendIcon />
-            </IconButton>
+              {quickActions.map((action, index) => {
+                const IconComponent = action.icon;
+                const isEmoji = typeof IconComponent === 'function' && IconComponent().type === 'span';
+                
+                return (
+                  <Button
+                    key={index}
+                    variant="outlined"
+                    startIcon={
+                      isEmoji ? (
+                        <IconComponent />
+                      ) : (
+                        <IconComponent sx={{ fontSize: 18, color: action.borderColor }} />
+                      )
+                    }
+                    onClick={() => handleQuickAction(action.message)}
+                    disabled={!isChatEnabled}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      py: 0.75,
+                      px: 2,
+                      borderWidth: 2,
+                      borderColor: action.borderColor,
+                      color: '#1f2937',
+                      bgcolor: 'white',
+                      '&:hover': {
+                        borderWidth: 2,
+                        borderColor: action.borderColor,
+                        bgcolor: action.hoverBg,
+                      },
+                      '&.Mui-disabled': {
+                        borderColor: '#e5e7eb',
+                        color: '#9ca3af',
+                      }
+                    }}
+                  >
+                    {action.label}
+                  </Button>
+                );
+              })}
+            </Box>
+
+            {/* Text Input */}
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder={
+                  isChatEnabled
+                    ? "Type your request (e.g., 'I need more pillows')..."
+                    : 'Chat is disabled. Please check in first.'
+                }
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={!isChatEnabled}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    bgcolor: isChatEnabled ? '#f9fafb' : '#e5e7eb',
+                  },
+                }}
+              />
+              <IconButton
+                color="primary"
+                onClick={handleSendMessage}
+                disabled={!isChatEnabled}
+                sx={{
+                  bgcolor: isChatEnabled ? '#2563eb' : '#9ca3af',
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  borderRadius: 2,
+                  '&:hover': {
+                    bgcolor: isChatEnabled ? '#1d4ed8' : '#9ca3af',
+                  },
+                  '&.Mui-disabled': {
+                    bgcolor: '#9ca3af',
+                    color: 'white',
+                  },
+                }}
+              >
+                <SendIcon />
+              </IconButton>
+            </Box>
           </Box>
         </Paper>
       </Box>
