@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -10,6 +10,7 @@ import {
   Alert,
   AlertTitle,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -18,30 +19,35 @@ import {
   Cancel as XCircleIcon,
   Place as MapPinIcon,
   Wifi as WifiIcon,
-  DryCleaning as ShirtIcon,
-  Restaurant as UtensilsIcon,
-  DirectionsCar as CarIcon,
   WaterDrop as DropletIcon,
-  Coffee as CoffeeIcon,
-  VpnKey as KeyIcon,
-  Phone as PhoneIcon,
 } from '@mui/icons-material';
 
-const ConciergeChat = ({ 
-  checkInStatus = 'checked-in', 
-  guestName = 'Mr. Guest', 
-  roomNumber = '304' 
-}) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'concierge',
-      text: `Welcome ${guestName}! I am your personal concierge. You can ask me to bring towels, order food, or arrange transportation.`,
-      timestamp: 'Now'
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
+// API Configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
+const ConciergeChat = ({ 
+  initialHotelId,
+  initialRoomNumber,
+  initialGuestName = null,
+  initialBookingId = null
+}) => {
+  // Guest information from backend
+  const [guestInfo, setGuestInfo] = useState(null);
+  const [loadingGuestInfo, setLoadingGuestInfo] = useState(true);
+  const [guestInfoError, setGuestInfoError] = useState(null);
+  
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  // Polling for status updates
+  const pollingIntervalRef = useRef(null);
+
+  // Derived values
+  const checkInStatus = guestInfo?.status || 'pending';
+  const guestName = guestInfo?.guestName || initialGuestName || 'Guest';
+  const roomNumber = guestInfo?.roomNumber || initialRoomNumber;
   const isChatEnabled = checkInStatus === 'checked-in';
 
   // Quick action buttons configuration
@@ -90,6 +96,99 @@ const ConciergeChat = ({
     }
   ];
 
+  // Fetch guest information from backend
+  const fetchGuestInfo = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoadingGuestInfo(true);
+      
+      const response = await fetch(`${API_BASE_URL}/api/guest/info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotelId: initialHotelId,
+          roomNumber: initialRoomNumber
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to fetch guest information');
+      }
+
+      const data = await response.json();
+      
+      // Override with initial values if provided (from login)
+      if (initialGuestName) data.guestName = initialGuestName;
+      if (initialBookingId) data.bookingId = initialBookingId;
+      
+      // Check if status changed
+      const statusChanged = guestInfo && guestInfo.status !== data.status;
+      
+      setGuestInfo(data);
+      
+      // Update welcome message if this is first load
+      if (!messages.length) {
+        setMessages([{
+          id: 1,
+          sender: 'concierge',
+          text: `Welcome ${data.guestName}! I am your personal concierge. You can ask me to bring towels, order food, or arrange transportation.`,
+          timestamp: 'Now'
+        }]);
+      }
+      
+      // If status changed, show notification message
+      if (statusChanged) {
+        if (data.status === 'checked-in') {
+          setMessages(prev => [...prev, {
+            id: Date.now(),
+            sender: 'concierge',
+            text: '✅ You have been checked in! You can now use the concierge chat.',
+            timestamp: 'Now'
+          }]);
+        } else if (data.status === 'checked-out') {
+          setMessages(prev => [...prev, {
+            id: Date.now(),
+            sender: 'concierge',
+            text: '👋 You have been checked out. Thank you for staying with us!',
+            timestamp: 'Now'
+          }]);
+        }
+      }
+      
+      setGuestInfoError(null);
+    } catch (error) {
+      console.error('Failed to fetch guest info:', error);
+      if (showLoading) setGuestInfoError(error.message);
+    } finally {
+      if (showLoading) setLoadingGuestInfo(false);
+    }
+  };
+
+  // Initial fetch on component mount
+  useEffect(() => {
+    fetchGuestInfo(true);
+  }, [initialHotelId, initialRoomNumber]);
+
+  // Set up polling for status updates (every 5 seconds)
+  useEffect(() => {
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Start polling
+    pollingIntervalRef.current = setInterval(() => {
+      fetchGuestInfo(false); // Don't show loading spinner during polling
+    }, 5000); // Poll every 5 seconds
+
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [guestInfo?.status]); // Restart polling when status changes
+
   const getStatusConfig = () => {
     switch(checkInStatus) {
       case 'pending':
@@ -125,9 +224,35 @@ const ConciergeChat = ({
 
   const statusConfig = getStatusConfig();
 
-  const handleQuickAction = (message) => {
-    if (!isChatEnabled) return;
+  const sendMessageToBackend = async (messageText) => {
+    if (!guestInfo) {
+      throw new Error('Guest information not loaded');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/chat/guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingId: guestInfo.bookingId,
+        hotelId: String(guestInfo.hotelId),
+        roomNumber: guestInfo.roomNumber,
+        guestName: guestInfo.guestName,
+        message: messageText
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to send message');
+    }
+
+    return response.json();
+  };
+
+  const handleQuickAction = async (message) => {
+    if (!isChatEnabled || isSending || !guestInfo) return;
     
+    // Add user message to UI
     const newMessage = {
       id: messages.length + 1,
       sender: 'guest',
@@ -135,46 +260,103 @@ const ConciergeChat = ({
       timestamp: 'Now'
     };
     setMessages([...messages, newMessage]);
+    setIsSending(true);
     
-    setTimeout(() => {
-      const response = {
+    try {
+      // Call backend
+      const response = await sendMessageToBackend(message);
+      
+      // Add bot response
+      const botMessage = {
         id: messages.length + 2,
         sender: 'concierge',
-        text: 'I\'ve received your request. I\'ll take care of that right away!',
+        text: response.response,
         timestamp: 'Now'
       };
-      setMessages(prev => [...prev, response]);
-    }, 1000);
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        id: messages.length + 2,
+        sender: 'concierge',
+        text: 'Sorry, I encountered an error. Please try again.',
+        timestamp: 'Now'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleSendMessage = () => {
-    if (!isChatEnabled || !inputMessage.trim()) return;
+  const handleSendMessage = async () => {
+    if (!isChatEnabled || !inputMessage.trim() || isSending || !guestInfo) return;
 
+    const messageText = inputMessage.trim();
     const newMessage = {
       id: messages.length + 1,
       sender: 'guest',
-      text: inputMessage,
+      text: messageText,
       timestamp: 'Now'
     };
     setMessages([...messages, newMessage]);
     setInputMessage('');
+    setIsSending(true);
     
-    setTimeout(() => {
-      const response = {
+    try {
+      // Call backend
+      const response = await sendMessageToBackend(messageText);
+      
+      // Add bot response
+      const botMessage = {
         id: messages.length + 2,
         sender: 'concierge',
-        text: 'I\'ve received your request. I\'ll take care of that right away!',
+        text: response.response,
         timestamp: 'Now'
       };
-      setMessages(prev => [...prev, response]);
-    }, 1000);
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        id: messages.length + 2,
+        sender: 'concierge',
+        text: 'Sorry, I encountered an error. Please try again.',
+        timestamp: 'Now'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && isChatEnabled) {
+    if (e.key === 'Enter' && isChatEnabled && !isSending) {
       handleSendMessage();
     }
   };
+
+  // Loading state
+  if (loadingGuestInfo) {
+    return (
+      <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>Loading guest information...</Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Error state
+  if (guestInfoError) {
+    return (
+      <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+        <Alert severity="error">
+          <AlertTitle>Unable to Load Guest Information</AlertTitle>
+          {guestInfoError}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', bgcolor: '#f5f5f5' }}>
@@ -365,6 +547,31 @@ const ConciergeChat = ({
                 )}
               </Box>
             ))}
+
+            {isSending && (
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                <Avatar sx={{ bgcolor: '#2563eb' }}>
+                  <MessageCircleIcon />
+                </Avatar>
+                <Box>
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      p: 2,
+                      bgcolor: 'white',
+                      borderRadius: 3,
+                      borderTopLeftRadius: 1,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ width: 8, height: 8, bgcolor: '#cbd5e1', borderRadius: '50%', animation: 'bounce 1s infinite' }} />
+                      <Box sx={{ width: 8, height: 8, bgcolor: '#cbd5e1', borderRadius: '50%', animation: 'bounce 1s infinite 0.2s' }} />
+                      <Box sx={{ width: 8, height: 8, bgcolor: '#cbd5e1', borderRadius: '50%', animation: 'bounce 1s infinite 0.4s' }} />
+                    </Box>
+                  </Paper>
+                </Box>
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -404,7 +611,7 @@ const ConciergeChat = ({
                       )
                     }
                     onClick={() => handleQuickAction(action.message)}
-                    disabled={!isChatEnabled}
+                    disabled={!isChatEnabled || isSending}
                     sx={{
                       borderRadius: 2,
                       textTransform: 'none',
@@ -446,7 +653,7 @@ const ConciergeChat = ({
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                disabled={!isChatEnabled}
+                disabled={!isChatEnabled || isSending}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 3,
@@ -457,15 +664,15 @@ const ConciergeChat = ({
               <IconButton
                 color="primary"
                 onClick={handleSendMessage}
-                disabled={!isChatEnabled}
+                disabled={!isChatEnabled || isSending || !inputMessage.trim()}
                 sx={{
-                  bgcolor: isChatEnabled ? '#2563eb' : '#9ca3af',
+                  bgcolor: (isChatEnabled && !isSending) ? '#2563eb' : '#9ca3af',
                   color: 'white',
                   width: 56,
                   height: 56,
                   borderRadius: 2,
                   '&:hover': {
-                    bgcolor: isChatEnabled ? '#1d4ed8' : '#9ca3af',
+                    bgcolor: (isChatEnabled && !isSending) ? '#1d4ed8' : '#9ca3af',
                   },
                   '&.Mui-disabled': {
                     bgcolor: '#9ca3af',
@@ -473,7 +680,7 @@ const ConciergeChat = ({
                   },
                 }}
               >
-                <SendIcon />
+                {isSending ? <CircularProgress size={24} sx={{ color: 'white' }} /> : <SendIcon />}
               </IconButton>
             </Box>
           </Box>

@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import HotelDetails from "./pages/HotelDetails";
 import ConciergePage from "./pages/ConciergePage";
+import GuestLoginPage from "./pages/GuestLoginPage"; // NEW IMPORT
 import Chatbot from "./components/Chatbot";
 import Footer from "./components/Footer";
 
@@ -19,7 +20,11 @@ export default function App() {
       <AuthProvider>
         <Router>
           <Routes>
+            {/* Existing admin/user login */}
             <Route path="/login" element={<LoginPage />} />
+
+            {/* NEW: Guest login with booking reference */}
+            <Route path="/guest-login" element={<GuestLoginPage />} />
 
             <Route
               path="/"
@@ -49,6 +54,7 @@ export default function App() {
               }
             />
 
+            {/* Guest portal route - now requires guest login */}
             <Route path="/guest-portal" element={<ConciergePage />} />
           </Routes>
         </Router>
