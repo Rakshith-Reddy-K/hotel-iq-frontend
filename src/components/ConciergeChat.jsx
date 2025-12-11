@@ -48,7 +48,7 @@ const ConciergeChat = ({
   const checkInStatus = guestInfo?.status || 'pending';
   const guestName = guestInfo?.guestName || initialGuestName || 'Guest';
   const roomNumber = guestInfo?.roomNumber || initialRoomNumber;
-  const isChatEnabled = checkInStatus === 'checked-in';
+  const isChatEnabled = checkInStatus === 'checked_in';  // CHANGED: underscore not hyphen
 
   // Quick action buttons configuration
   const quickActions = [
@@ -138,14 +138,14 @@ const ConciergeChat = ({
       
       // If status changed, show notification message
       if (statusChanged) {
-        if (data.status === 'checked-in') {
+        if (data.status === 'checked_in') {  // CHANGED: underscore
           setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'concierge',
             text: '✅ You have been checked in! You can now use the concierge chat.',
             timestamp: 'Now'
           }]);
-        } else if (data.status === 'checked-out') {
+        } else if (data.status === 'checked_out') {  // CHANGED: underscore
           setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'concierge',
@@ -198,14 +198,14 @@ const ConciergeChat = ({
           icon: <ClockIcon />,
           message: 'Please check in at the front desk to access concierge services.'
         };
-      case 'checked-in':
+      case 'checked_in':  // CHANGED: underscore
         return {
           text: 'Checked In',
           color: 'success',
           icon: null,
           message: null
         };
-      case 'checked-out':
+      case 'checked_out':  // CHANGED: underscore
         return {
           text: 'Checked Out',
           color: 'error',
@@ -229,6 +229,10 @@ const ConciergeChat = ({
       throw new Error('Guest information not loaded');
     }
 
+    // Get booking reference from sessionStorage
+    const storedData = sessionStorage.getItem('guestData');
+    const bookingReference = storedData ? JSON.parse(storedData).bookingReference : null;
+
     const response = await fetch(`${API_BASE_URL}/api/chat/guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -237,7 +241,8 @@ const ConciergeChat = ({
         hotelId: String(guestInfo.hotelId),
         roomNumber: guestInfo.roomNumber,
         guestName: guestInfo.guestName,
-        message: messageText
+        message: messageText,
+        bookingReference: bookingReference  // ADD THIS
       })
     });
 
