@@ -19,6 +19,8 @@ import LockIcon from "@mui/icons-material/Lock";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 const STORAGE_KEY_PREFIX = "hoteliq_chat_session";
 const DEFAULT_HOTEL_ID = "111418";
@@ -571,12 +573,116 @@ export default function Chatbot() {
                         boxShadow: 1,
                       }}
                     >
-                      <Typography
-                        variant="body1"
-                        sx={{ whiteSpace: "pre-wrap" }}
-                      >
-                        {m.text}
-                      </Typography>
+                      {m.from === "bot" ? (
+                        <ReactMarkdown
+                          rehypePlugins={[rehypeRaw]}
+                          components={{
+                            p: ({ node, ...props }) => (
+                              <Typography
+                                variant="body1"
+                                component="p"
+                                sx={{ margin: 0, marginBottom: 1, "&:last-child": { marginBottom: 0 } }}
+                                {...props}
+                              />
+                            ),
+                            h1: ({ node, ...props }) => (
+                              <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }} {...props} />
+                            ),
+                            h2: ({ node, ...props }) => (
+                              <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 1 }} {...props} />
+                            ),
+                            h3: ({ node, ...props }) => (
+                              <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600, mb: 0.5 }} {...props} />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <Box component="ul" sx={{ margin: 0, paddingLeft: 2, mb: 1 }} {...props} />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <Box component="ol" sx={{ margin: 0, paddingLeft: 2, mb: 1 }} {...props} />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <Typography variant="body1" component="li" sx={{ mb: 0.5 }} {...props} />
+                            ),
+                            code: ({ node, inline, ...props }) =>
+                              inline ? (
+                                <Box
+                                  component="code"
+                                  sx={{
+                                    bgcolor: "rgba(0, 0, 0, 0.1)",
+                                    px: 0.5,
+                                    py: 0.25,
+                                    borderRadius: 0.5,
+                                    fontFamily: "monospace",
+                                    fontSize: "0.9em",
+                                  }}
+                                  {...props}
+                                />
+                              ) : (
+                                <Box
+                                  component="pre"
+                                  sx={{
+                                    bgcolor: "rgba(0, 0, 0, 0.05)",
+                                    p: 1,
+                                    borderRadius: 1,
+                                    overflow: "auto",
+                                    mb: 1,
+                                    fontFamily: "monospace",
+                                    fontSize: "0.85em",
+                                  }}
+                                  {...props}
+                                >
+                                  <code {...props} />
+                                </Box>
+                              ),
+                            blockquote: ({ node, ...props }) => (
+                              <Box
+                                component="blockquote"
+                                sx={{
+                                  borderLeft: "3px solid #2563eb",
+                                  pl: 2,
+                                  ml: 0,
+                                  mb: 1,
+                                  fontStyle: "italic",
+                                  opacity: 0.8,
+                                }}
+                                {...props}
+                              />
+                            ),
+                            a: ({ node, ...props }) => (
+                              <Box
+                                component="a"
+                                sx={{
+                                  color: "#2563eb",
+                                  textDecoration: "underline",
+                                  "&:hover": { opacity: 0.8 },
+                                }}
+                                {...props}
+                              />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <Box component="strong" sx={{ fontWeight: 700 }} {...props} />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <Box component="em" sx={{ fontStyle: "italic" }} {...props} />
+                            ),
+                            // HTML elements support via rehype-raw
+                            b: ({ node, ...props }) => (
+                              <Box component="b" sx={{ fontWeight: 700 }} {...props} />
+                            ),
+                            i: ({ node, ...props }) => (
+                              <Box component="i" sx={{ fontStyle: "italic" }} {...props} />
+                            ),
+                            br: ({ node, ...props }) => <br {...props} />,
+                            span: ({ node, ...props }) => <Box component="span" {...props} />,
+                          }}
+                        >
+                          {m.text}
+                        </ReactMarkdown>
+                      ) : (
+                        <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                          {m.text}
+                        </Typography>
+                      )}
                       <Typography
                         variant="caption"
                         sx={{
