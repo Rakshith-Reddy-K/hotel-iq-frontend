@@ -48,7 +48,7 @@ const ConciergeChat = ({
   const checkInStatus = guestInfo?.status || 'pending';
   const guestName = guestInfo?.guestName || initialGuestName || 'Guest';
   const roomNumber = guestInfo?.roomNumber || initialRoomNumber;
-  const isChatEnabled = checkInStatus === 'checked_in';  // CHANGED: underscore not hyphen
+  const isChatEnabled = checkInStatus === 'checked-in';  // CHANGED: underscore not hyphen
 
   // Quick action buttons configuration
   const quickActions = [
@@ -138,14 +138,14 @@ const ConciergeChat = ({
       
       // If status changed, show notification message
       if (statusChanged) {
-        if (data.status === 'checked_in') {  // CHANGED: underscore
+        if (data.status === 'checked-in') {  // CHANGED: underscore
           setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'concierge',
             text: '✅ You have been checked in! You can now use the concierge chat.',
             timestamp: 'Now'
           }]);
-        } else if (data.status === 'checked_out') {  // CHANGED: underscore
+        } else if (data.status === 'checked-out') {  // CHANGED: underscore
           setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'concierge',
@@ -198,14 +198,14 @@ const ConciergeChat = ({
           icon: <ClockIcon />,
           message: 'Please check in at the front desk to access concierge services.'
         };
-      case 'checked_in':  // CHANGED: underscore
+      case 'checked-in':  // CHANGED: underscore
         return {
           text: 'Checked In',
           color: 'success',
           icon: null,
           message: null
         };
-      case 'checked_out':  // CHANGED: underscore
+      case 'checked-out':  // CHANGED: underscore
         return {
           text: 'Checked Out',
           color: 'error',
