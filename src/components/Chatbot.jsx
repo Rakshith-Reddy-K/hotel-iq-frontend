@@ -300,21 +300,28 @@ export default function Chatbot() {
     }
   };
 
-  const send = async () => {
-    if (!text.trim() || !isAuthenticated || !userId) return;
+  // Modified send to accept direct content (for "Book Now" clicks)
+  const send = async (manualContent = null) => {
+    const contentToSend = (
+      typeof manualContent === "string" ? manualContent : text
+    ).trim();
+
+    if (!contentToSend || !isAuthenticated || !userId) return;
 
     const userMessage = {
       id: Date.now(),
       from: "user",
-      text: text.trim(),
+      text: contentToSend,
       timestamp: new Date().toISOString(),
     };
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
 
-    const userText = text.trim();
-    setText("");
+    // Only clear the text input if we sent what was in the input
+    if (!manualContent) {
+      setText("");
+    }
     setLoading(true);
 
     saveToLocalStorage(threadId, updatedMessages);
@@ -323,7 +330,7 @@ export default function Chatbot() {
       const response = await axios.post(
         `${API_BASE_URL}/api/v1/chat/message`,
         {
-          message: userText,
+          message: contentToSend,
           user_id: userId,
           hotel_id: currentHotelId,
           thread_id: threadId,
@@ -365,6 +372,29 @@ export default function Chatbot() {
       setLoading(false);
     }
   };
+
+  // Listen for "Book Now" triggers from other components
+  useEffect(() => {
+    const handleTrigger = (event) => {
+      const { message, autoSend } = event.detail;
+
+      setOpen(true);
+
+      if (message) {
+        if (autoSend) {
+          send(message);
+        } else {
+          setText(message);
+        }
+      }
+    };
+
+    window.addEventListener("openChatbot", handleTrigger);
+
+    return () => {
+      window.removeEventListener("openChatbot", handleTrigger);
+    };
+  }, [messages, threadId, userId, currentHotelId, isAuthenticated, text]);
 
   const handleLoginClick = () => {
     setOpen(false);
@@ -604,7 +634,7 @@ export default function Chatbot() {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                          onClick={send}
+                          onClick={() => send()}
                           sx={{
                             color: "#2563eb",
                             "&:hover": { bgcolor: "rgba(37, 99, 235, 0.1)" },
