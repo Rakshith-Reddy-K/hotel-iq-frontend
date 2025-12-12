@@ -46,9 +46,10 @@ const ConciergeChat = ({
 
   // Derived values
   const checkInStatus = guestInfo?.status || 'pending';
+  console.log("DEBUG STATUS:", checkInStatus);
   const guestName = guestInfo?.guestName || initialGuestName || 'Guest';
   const roomNumber = guestInfo?.roomNumber || initialRoomNumber;
-  const isChatEnabled = checkInStatus === 'checked-in';  // CHANGED: underscore not hyphen
+  const isChatEnabled = checkInStatus === 'checked_in' || 'checked-in';  // CHANGED: underscore not hyphen
 
   // Quick action buttons configuration
   const quickActions = [
@@ -198,6 +199,7 @@ const ConciergeChat = ({
           icon: <ClockIcon />,
           message: 'Please check in at the front desk to access concierge services.'
         };
+      case 'checked_in':
       case 'checked-in':  // CHANGED: underscore
         return {
           text: 'Checked In',
@@ -205,6 +207,7 @@ const ConciergeChat = ({
           icon: null,
           message: null
         };
+      case 'checked_out':
       case 'checked-out':  // CHANGED: underscore
         return {
           text: 'Checked Out',
