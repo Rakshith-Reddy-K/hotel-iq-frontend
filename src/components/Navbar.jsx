@@ -45,9 +45,9 @@ export default function Navbar() {
   return (
     <AppBar position="sticky" color="primary" elevation={3}>
       <Toolbar sx={{ minHeight: 64 }}>
-        <IconButton edge="start" color="inherit" sx={{ mr: 1 }}>
+        {/* <IconButton edge="start" color="inherit" sx={{ mr: 1 }}>
           <MenuIcon />
-        </IconButton>
+        </IconButton> */}
 
         {/* Logo and Brand */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>

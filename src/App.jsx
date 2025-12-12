@@ -35,7 +35,7 @@ export default function App() {
                     <Home />
                   </Container>
                   <Footer />
-                  <Chatbot />
+                  {/* <Chatbot /> */}
                 </>
               }
             />
