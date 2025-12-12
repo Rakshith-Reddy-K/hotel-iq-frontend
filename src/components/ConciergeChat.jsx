@@ -49,8 +49,7 @@ const ConciergeChat = ({
   console.log("DEBUG STATUS:", checkInStatus);
   const guestName = guestInfo?.guestName || initialGuestName || 'Guest';
   const roomNumber = guestInfo?.roomNumber || initialRoomNumber;
-  const isChatEnabled = checkInStatus === 'checked_in' || 'checked-in';  // CHANGED: underscore not hyphen
-
+  const isChatEnabled = checkInStatus === 'checked_in' || checkInStatus === 'checked-in';
   // Quick action buttons configuration
   const quickActions = [
     { 
